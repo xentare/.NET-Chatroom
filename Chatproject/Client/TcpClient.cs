@@ -21,10 +21,13 @@ namespace Client
         private Thread receivingThread;
         private System.Net.Sockets.TcpClient client;
         private MainWindow window;
+        private TextBoxOutputter outputter;
 
         public TcpClient(MainWindow window)
         {
             this.window = window;
+            outputter = new TextBoxOutputter(window.logTextBox);
+            Console.SetOut(outputter);
             //receivingThread = new Thread(ReceivingMethod);
             //sendingThread = new Thread(SendingMethod);
         }
@@ -38,6 +41,7 @@ namespace Client
                 //SendMessageAsync(msg);
                 client.Close();
                 receivingThread.Abort();
+                Console.WriteLine("Disconnected");
             }
             catch (SocketException e)
             {
@@ -63,6 +67,7 @@ namespace Client
                 Console.WriteLine("SocketExecption {0}", e);
             }
             if (!client.Connected) return;
+            Console.WriteLine("Connected.");
             receivingThread = new Thread(ReceivingMethod);
             receivingThread.Start();
         }
@@ -105,7 +110,7 @@ namespace Client
                 {
                     byte[] bytes = BitConverter.GetBytes(task.Result);
                     string str = Encoding.UTF8.GetString(buffer, 0, task.Result);
-                    Console.WriteLine("Message received: {0}\nBytes received: {1}", str, task.Result);
+                    //Console.WriteLine("Message received: {0}\nBytes received: {1}", str, task.Result);
                 });
                 return read;
             }
@@ -126,10 +131,12 @@ namespace Client
                         if (TimeoutCounter > Timeout)
                         {
                             client.Close();
+                            Console.WriteLine("Disconnected");
                             break;
                         }
                         Thread.Sleep(2000);
                         Console.WriteLine("0 bytes received, sleeping thread...");
+                        Console.WriteLine("Host not connected...");
                     }
                     else
                     {

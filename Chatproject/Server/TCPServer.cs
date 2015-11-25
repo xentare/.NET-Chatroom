@@ -48,7 +48,6 @@ namespace Chatclient
             var handler = listener.EndAcceptTcpClient(ar);
             Console.WriteLine(handler.Client.RemoteEndPoint + " connected.");
             var receiver = new Receiver(this, listener, handler);
-            Console.WriteLine("asd");
             clients.Add(receiver);
         }
 

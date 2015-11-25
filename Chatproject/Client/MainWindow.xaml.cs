@@ -60,9 +60,21 @@ namespace Client
             });
         }
 
+        public void PostLog(string msg)
+        {
+            ThreadPool.QueueUserWorkItem((o) =>
+            {
+                Dispatcher.Invoke((Action) (() => logTextBox.Text += msg + "\n"));
+                Dispatcher.Invoke((Action)(() => chatTextBox.Focus()));
+                Dispatcher.Invoke((Action)(() => chatTextBox.CaretIndex = chatTextBox.Text.Length));
+                Dispatcher.Invoke((Action)(() => chatTextBox.ScrollToEnd()));
+            });
+        }
+
         private void MainWindow_OnClosed(object sender, EventArgs e)
         {
             Environment.Exit(Environment.ExitCode);
         }
+
     }
 }

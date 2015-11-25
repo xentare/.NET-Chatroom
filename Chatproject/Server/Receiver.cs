@@ -41,8 +41,6 @@ namespace Chatclient
         public void Start()
         {
 
-            WriteAsync("Welcome to the server!");
-
             while (Client.Connected)
             {
                 Read();
