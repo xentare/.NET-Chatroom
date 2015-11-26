@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -41,6 +42,7 @@ namespace Client
                 //SendMessageAsync(msg);
                 client.Close();
                 receivingThread.Abort();
+                client = null;
                 Console.WriteLine("Disconnected");
             }
             catch (SocketException e)
@@ -49,17 +51,18 @@ namespace Client
             }
             catch (NullReferenceException e)
             {
-                Console.WriteLine("Cant disconnected since we are not connected");
-                Console.WriteLine("NullReferenceException {0}", e);
+                Console.WriteLine("Not connected");
+                //Console.WriteLine("NullReferenceException {0}", e);
             }
         }
 
-        public void Start()
+        public void Start(string nickname)
         {
+            if (client != null) return;
             try
             {
                 client = new System.Net.Sockets.TcpClient();
-                client.Connect("127.0.0.1", 5555);
+                client.Connect("localhost", 5555);
                 stream = client.GetStream();
             }
             catch (SocketException e)
@@ -77,10 +80,9 @@ namespace Client
             MessageQueue.Add(message);
         }
 
-        public Task SendMessageAsync(MessageBase msg)
+        public Task SendMessageAsync(string msg)
         {
-            string str = (msg as ResponseTextMessage).Text;
-            byte[] buffer = Encoding.UTF8.GetBytes(str);
+            byte[] buffer = Encoding.UTF8.GetBytes(msg);
             try
             {
                 var writeTask = stream.WriteAsync(buffer, 0, buffer.Length);
@@ -96,7 +98,17 @@ namespace Client
             }
             catch (IOException e)
             {
-                Console.WriteLine("IOException {0}", e);
+                //Console.WriteLine("IOException {0}", e);
+            }
+            catch (ObjectDisposedException e)
+            {
+                //Console.WriteLine("ObjectDisposedException {0}", e);
+                Console.WriteLine("Not connected");
+            }
+            catch (NullReferenceException e)
+            {
+                //Console.WriteLine("NullReferenceException {0}", e);
+                Console.WriteLine("Not connected");
             }
             return null;
         }
@@ -143,7 +155,7 @@ namespace Client
                         TimeoutCounter = 0;
                         byte[] bytes = BitConverter.GetBytes(x);
                         string str = Encoding.UTF8.GetString(buffer, 0, x);
-                        Console.WriteLine("Message received: {0}\nBytes received: {1}", str, x);
+                        Console.WriteLine("Bytes received: {0}",x);
                         window.PostMessage(str);
                     }
                 }
