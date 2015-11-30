@@ -7,46 +7,19 @@ using System.Threading.Tasks;
 namespace Client
 {
     [Serializable]
-    internal class MessageBase
+    public class MessageBase
     {
-        public Guid CallbackID { get; set; }
-        public bool IsValid { get; set; }
-        public bool HasError { get; set; }
-        public Exception Exception { get; set; }
-
-        public MessageBase()
+        public enum Types
         {
-            Exception = new Exception();
+            Message,
+            Login,
+            LoggedInBroadcast
         }
-    }
-    [Serializable]
-    internal class RequestMessageBase : MessageBase
-    {
 
-    }
-    [Serializable]
-    internal class ResponseMessageBase : MessageBase    {
-        public bool DeleteCallbackAfterInvoke { get; set; }
-
-    }
-    [Serializable]
-    internal class ResponseTextMessage : ResponseMessageBase
-    {
-        public string Text { get; set; }
-    }
-    [Serializable]
-    internal class ValidationRequest : RequestMessageBase
-    {
+        public string LoggedInUsers { get; set; }
+        public int Type { get; set; }
+        public bool IsValid { get; set; }
+        public string Message { get; set; }
         public string Nickname { get; set; }
-    }
-    [Serializable]
-    internal class ValidationResponse : ResponseMessageBase
-    {
-
-    }
-
-    internal class CloseRequest : ResponseMessageBase
-    {
-        public bool close { get; set; }
     }
 }

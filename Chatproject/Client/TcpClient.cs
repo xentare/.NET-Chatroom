@@ -1,14 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq.Expressions;
-using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace Client
 {
@@ -17,32 +16,27 @@ namespace Client
         private const int BufferSize = 1024;
         private const int Timeout = 2;
         private int TimeoutCounter;
-        private NetworkStream stream;
+        private NetworkStream Stream;
         private List<MessageBase> MessageQueue = new List<MessageBase>();
         private Thread receivingThread;
-        private System.Net.Sockets.TcpClient client;
-        private MainWindow window;
+        private System.Net.Sockets.TcpClient Client;
+        private MainWindow Window;
         private TextBoxOutputter outputter;
 
         public TcpClient(MainWindow window)
         {
-            this.window = window;
+            this.Window = window;
             outputter = new TextBoxOutputter(window.logTextBox);
             Console.SetOut(outputter);
-            //receivingThread = new Thread(ReceivingMethod);
-            //sendingThread = new Thread(SendingMethod);
         }
-
         public void Close()
         {
-            //ResponseTextMessage msg = new ResponseTextMessage();
-            //msg.Text = "<CLOSE>";
             try
             {
                 //SendMessageAsync(msg);
-                client.Close();
+                Client.Close();
                 receivingThread.Abort();
-                client = null;
+                Client = null;
                 Console.WriteLine("Disconnected");
             }
             catch (SocketException e)
@@ -55,37 +49,52 @@ namespace Client
                 //Console.WriteLine("NullReferenceException {0}", e);
             }
         }
-
+        /*
+        * Connects to server, logins and starts receiving thread.
+        */
         public void Start(string nickname)
         {
-            if (client != null) return;
+            if (Client != null) return;
             try
             {
-                client = new System.Net.Sockets.TcpClient();
-                client.Connect("localhost", 5555);
-                stream = client.GetStream();
+                Client = new System.Net.Sockets.TcpClient();
+                Client.Connect("localhost", 5555);
+                Stream = Client.GetStream();
+                Login(Properties.Settings.Default.nickname);
             }
             catch (SocketException e)
             {
                 Console.WriteLine("SocketExecption {0}", e);
             }
-            if (!client.Connected) return;
+            if (!Client.Connected) return;
             Console.WriteLine("Connected.");
-            receivingThread = new Thread(ReceivingMethod);
+            receivingThread = new Thread(ReadSerializable);
             receivingThread.Start();
         }
-
-        public void AddMessageToQueue(MessageBase message)
+        public Task SendMessageAsync(MessageBase msg)
         {
-            MessageQueue.Add(message);
-        }
+            try
+            {
+                XmlSerializer x = new XmlSerializer(typeof (MessageBase));
+                x.Serialize(Stream, msg);
+            }
+            catch (InvalidOperationException e)
+            {
+                Console.WriteLine("{0}", e);
+            }
+            catch (ArgumentException e)
+            {
+                Console.WriteLine("ArgumentException {0}",e);
+            }
 
+            return null;
+        }
         public Task SendMessageAsync(string msg)
         {
             byte[] buffer = Encoding.UTF8.GetBytes(msg);
             try
             {
-                var writeTask = stream.WriteAsync(buffer, 0, buffer.Length);
+                var writeTask = Stream.WriteAsync(buffer, 0, buffer.Length);
                 writeTask.ContinueWith(
                     task =>
                     {
@@ -112,23 +121,98 @@ namespace Client
             }
             return null;
         }
-
-        private Task ReadMessageAsync()
+        /*
+        * Runs on a separate thread. Passes readed bytes to asyncronous OnSerializableReceived and keeps reading.
+        */
+        private void ReadSerializable()
         {
-            if (!stream.DataAvailable)
+            while (true)
             {
-                byte[] buffer = new byte[BufferSize];
-                var read = stream.ReadAsync(buffer, 0, BufferSize).ContinueWith(task =>
+                try
                 {
-                    byte[] bytes = BitConverter.GetBytes(task.Result);
-                    string str = Encoding.UTF8.GetString(buffer, 0, task.Result);
-                    //Console.WriteLine("Message received: {0}\nBytes received: {1}", str, task.Result);
-                });
-                return read;
-            }
-            return ReadMessageAsync();
-        }
+                    byte[] buffer = new byte[1024];
+                    var x = Stream.Read(buffer, 0, BufferSize);
 
+                    if (x == 0)
+                    {
+                        TimeoutCounter = TimeoutCounter + 1;
+                        if (TimeoutCounter > Timeout)
+                        {
+                            Client.Close();
+                            Console.WriteLine("Disconnected");
+                            break;
+                        }
+                        Thread.Sleep(2000);
+                        Console.WriteLine("0 bytes received, sleeping thread...");
+                        Console.WriteLine("Host not connected...");
+                        return;
+                    }
+
+                    OnSerializableReceived(ref buffer);
+                }
+                catch (SocketException e)
+                {
+                    Console.WriteLine("Exception {0}", e);
+                    Close();
+                }
+                catch (IOException e)
+                {
+                    Console.WriteLine("IOException {0}", e);
+                    Close();
+                }
+                catch (SerializationException e)
+                {
+                    Console.WriteLine("SerializationException {0}", e);
+                }
+                catch (ObjectDisposedException e)
+                {
+                    Console.WriteLine("ObjectDisposedException {0}", e);
+                    Close();
+                }
+            }
+        }
+        /*
+        * Handles received messages.
+        */
+        public Task OnSerializableReceived(ref byte[] buffer)
+        {
+            try
+            {
+                XmlSerializer x = new XmlSerializer(typeof(MessageBase));
+                MemoryStream s = new MemoryStream();
+                s.Write(buffer, 0, buffer.Length);
+                s.Position = 0;
+                var msg = x.Deserialize(s) as MessageBase;
+
+                switch (msg.Type)
+                {
+                    case (int)MessageBase.Types.Message:
+                        Window.PostMessage(msg.Nickname+": "+msg.Message);
+                        break;
+                    case (int)MessageBase.Types.LoggedInBroadcast:
+                        Window.PostUsers(msg.LoggedInUsers);
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+            catch (SerializationException e)
+            {
+                Console.WriteLine("SerializationException {0}", e);
+            }
+            return null;
+        }
+        public void Login(string nickname)
+        {
+            MessageBase msg = new MessageBase();
+            msg.Type = (int)MessageBase.Types.Login;
+            msg.Nickname = nickname;
+            SendMessageAsync(msg);
+        }
+        /*
+        * Previously used method to read strings from network stream.
+        */
         private void ReceivingMethod()
         {
             while (true)
@@ -136,13 +220,13 @@ namespace Client
                 try
                 {
                     byte[] buffer = new byte[BufferSize];
-                    int x = stream.Read(buffer, 0, BufferSize);
+                    int x = Stream.Read(buffer, 0, BufferSize);
                     if (x == 0)
                     {
                         TimeoutCounter = TimeoutCounter + 1;
                         if (TimeoutCounter > Timeout)
                         {
-                            client.Close();
+                            Client.Close();
                             Console.WriteLine("Disconnected");
                             break;
                         }
@@ -156,7 +240,7 @@ namespace Client
                         byte[] bytes = BitConverter.GetBytes(x);
                         string str = Encoding.UTF8.GetString(buffer, 0, x);
                         Console.WriteLine("Bytes received: {0}",x);
-                        window.PostMessage(str);
+                        Window.PostMessage(str);
                     }
                 }
                 catch (IOException e)
@@ -166,59 +250,6 @@ namespace Client
                 }
             }
         }
-
-        private void SendingMethod()
-        {
-            while (true)
-            {
-                if (MessageQueue.Count > 0)
-                {
-                    MessageBase msg = MessageQueue[0];
-                    try
-                    {
-                        BinaryFormatter f = new BinaryFormatter();
-                        f.Serialize(stream, msg);
-                    }
-                    catch (Exception e)
-                    {
-                        // ignored
-                    }
-                    MessageQueue.Remove(msg);
-                }
-                Thread.Sleep(60);
-            }
-        }
-
-        public void Login(String nickname)
-        {
-            ValidationRequest request = new ValidationRequest { Nickname = nickname };
-
-            AddMessageToQueue(request);
-        }
-
-        private void OnMessageReceived(MessageBase msg)
-        {
-            Type type = msg.GetType();
-
-            if (type == typeof(ResponseTextMessage))
-            {
-                Console.WriteLine("{0}", (msg as ResponseTextMessage).Text);
-            }
-
-            if (type == typeof(ValidationResponse))
-            {
-                if (msg.IsValid)
-                {
-                    Console.WriteLine("Succesfully validated client!");
-                }
-                else
-                {
-                    Console.WriteLine("Validation failed!");
-                }
-            }
-
-        }
-
 
     }
 }

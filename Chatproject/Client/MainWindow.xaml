@@ -8,22 +8,22 @@
         Title="MainWindow" Height="553.084" Width="525">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="158*"/>
-            <ColumnDefinition Width="359*"/>
+            <ColumnDefinition/>
         </Grid.ColumnDefinitions>
-        <TextBox x:Name="chatTextBox" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Left" Height="252" Margin="10,31,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="497" Grid.ColumnSpan="2"/>
-        <TextBox x:Name="msgTextBox" HorizontalAlignment="Left" Height="23" Margin="10,288,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="417" Grid.ColumnSpan="2"/>
-        <Button x:Name="sendButton" IsDefault="true" Content="Send" HorizontalAlignment="Left" Margin="274,288,0,0" VerticalAlignment="Top" Width="75" Click="sendButton_Click" Grid.Column="1"/>
+        <TextBox x:Name="chatTextBox" VerticalScrollBarVisibility="Auto" HorizontalAlignment="Left" Height="252" Margin="10,31,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="417"/>
+        <TextBox x:Name="msgTextBox" HorizontalAlignment="Left" Height="23" Margin="10,288,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="417"/>
+        <Button x:Name="sendButton" IsDefault="true" Content="Send" HorizontalAlignment="Left" Margin="432,288,0,0" VerticalAlignment="Top" Width="75" Click="sendButton_Click"/>
         <Button x:Name="disconnectButton" Content="Disconnect" HorizontalAlignment="Left" Margin="10,316,0,0" VerticalAlignment="Top" Width="75" Click="disconnectButton_Click"/>
-        <TextBox x:Name="logTextBox" HorizontalAlignment="Left" Height="170" Margin="10,343,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="497" Grid.ColumnSpan="2"/>
-        <Menu x:Name="menu" HorizontalAlignment="Left" Height="25" Margin="0,1,0,0" VerticalAlignment="Top" Width="507" Grid.ColumnSpan="2"
+        <TextBox x:Name="logTextBox" HorizontalAlignment="Left" Height="170" Margin="10,343,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="497"/>
+        <Menu x:Name="menu" HorizontalAlignment="Left" Height="25" Margin="0,1,0,0" VerticalAlignment="Top" Width="507"
               Grid.Column="0">
             <MenuItem Header="Connections" Height="25" Width="82">
                 <MenuItem Header="Connect" Click="MenuItem_Click" >
-                    
+
                 </MenuItem>
             </MenuItem>
         </Menu>
+        <TextBox x:Name="usersTextBox" HorizontalAlignment="Left" Height="252" Margin="432,31,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="75"/>
 
     </Grid>
 </Window>

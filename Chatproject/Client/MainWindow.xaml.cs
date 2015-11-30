@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Configuration;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace Client
@@ -19,22 +20,22 @@ namespace Client
             InitializeComponent();
             client = new TcpClient(this);
             msgTextBox.MaxLines = 1;
-            msgTextBox.MaxLength = 512;
-        }
-
-        private void connectButtonClicked(object sender, RoutedEventArgs e)
-        {
-
+            msgTextBox.MaxLength = 256;
         }
 
         private void sendButton_Click(object sender, RoutedEventArgs e)
         {
-            client.SendMessageAsync(msgTextBox.Text);
+            MessageBase msg = new MessageBase();
+            msg.Message = msgTextBox.Text;
+            msg.Type = (int) MessageBase.Types.Message;
+            msg.Nickname = Properties.Settings.Default.nickname;
+            client.SendMessageAsync(msg);
         }
 
         private void disconnectButton_Click(object sender, RoutedEventArgs e)
         {
             client.Close();
+            usersTextBox.Text = "";
         }
 
         /*
@@ -60,6 +61,20 @@ namespace Client
                 Dispatcher.Invoke((Action)(() => chatTextBox.CaretIndex = chatTextBox.Text.Length));
                 Dispatcher.Invoke((Action)(() => chatTextBox.ScrollToEnd()));
             });
+        }
+
+        public void PostUsers(string users)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                string[] usersString = users.Split(',');
+                string usersList = null;
+                foreach (string s in usersString)
+                {
+                    usersList += s + "\n";
+                }
+                usersTextBox.Text = usersList;
+            }));
         }
 
         private void MainWindow_OnClosed(object sender, EventArgs e)
